@@ -22,8 +22,8 @@ record_count = 0
 x_center = 116.407718
 y_center = 38.915599
 
-max_delta_x = 0
-max_delta_y = 0
+max_delta_x = 1.6952936584449958
+max_delta_y = 2.2264053110386968
 
 with open(csv_file, 'rt', encoding='utf-8') as ifile:
     reader = csv.DictReader(ifile)
@@ -36,26 +36,22 @@ with open(csv_file, 'rt', encoding='utf-8') as ifile:
             delta_x = abs(lon - x_center)
             delta_y = abs(lat - y_center)
 
-            max_delta_x = max(max_delta_x, delta_x)
-            max_delta_y = max(max_delta_y, delta_y)
-
-
+            #max_delta_x = max(max_delta_x, delta_x)
+            #max_delta_y = max(max_delta_y, delta_y)
             x_col.append(delta_x)
             y_col.append(delta_y)
-
-
             id_col.append(int(row[id_field]))
-
             dis = (float(row[x_field]) - 116.407718) * (float(row[x_field]) - 116.407718) \
                   + (float(row[y_field]) - 38.915599) * (float(row[y_field]) - 38.915599)
-            dis_col.append([dis, 0])
+
+            dis_col.append([delta_x * delta_x + delta_y * delta_y, 0])
 
             price_col.append(float(row[price_field]))
-            pos_col.append([delta_x, delta_y])
+            pos_col.append([delta_x / max_delta_x, delta_y / max_delta_y])
 
         record_count += 1
 
-    print(max_delta_x, max_delta_y)
+    #print(max_delta_x, max_delta_y)
 
 price_norm = [float(i) / max(price_col) for i in price_col]
 train_pos = torch.FloatTensor(pos_col)
@@ -88,7 +84,7 @@ y = Variable(train_price.type(dtype), requires_grad=False)
 w1 = Variable(torch.randn(D_in, H).type(dtype), requires_grad=True)
 w2 = Variable(torch.randn(H, D_out).type(dtype), requires_grad=True)
 
-learning_rate = 1e-5
+learning_rate = 1e-4
 
 #for t in range(1000):
 loss = 1
