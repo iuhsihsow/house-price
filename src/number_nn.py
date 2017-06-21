@@ -11,8 +11,6 @@ import csv
 import matplotlib.pyplot as plt
 
 batch_size = 32
-learning_rate = 1e-2
-num_epoches = 1000
 record_count = 0
 x_center = 116.407718
 y_center = 38.915599
@@ -21,6 +19,8 @@ max = 154953.0
 count = 5876
 
 price_np = np.zeros((count, 1), dtype=np.float32)
+dis_np = np.zeros((count, 1), dtype=np.float32)
+index_np = np.zeros((count, 1), dtype=np.float32)
 info_np = np.zeros((count, 5), dtype=np.float32)
 
 index = 0
@@ -29,14 +29,17 @@ csv_file = "../data/house_price_number.csv"
 with open(csv_file, 'rt', encoding='utf-8') as ifile:
     reader = csv.DictReader(ifile)
     for row in reader:
-        vip_school = float(row['n_school']) + 1.0
-        b_subway = float(row['b_subway']) + 1.0
+        vip_school = float(row['n_school'])
+        b_subway = float(row['b_subway'])
         dis = float(row['distance'])
         green_rate = float(row['greening_rate']) / 100.0
         plot_area = float(row['plot_area'])
         price = float(row['price']) / max
         info_np[index] = [vip_school, b_subway, dis, green_rate, plot_area]
         price_np[index] = [price]
+        index_np[index] = index
+        dis_np[index] = [dis]
+        index += 1
 
 print(info_np.shape)
 print(info_np[0])
@@ -59,8 +62,9 @@ class Neuralnetwork(nn.Module):
         x = self.layer3(x)
         return x
 
-
-model = Neuralnetwork(5 , 300, 100, 1)
+num_epoches = 10000
+learning_rate = 1e-5
+model = Neuralnetwork(5 , 300, 10, 1)
 
 criterion = nn.MSELoss()
 optimizer = optim.SGD(model.parameters(), lr=learning_rate)
@@ -90,12 +94,24 @@ predict = predict.data.numpy()
 
 np.savetxt("../data/predict.csv", predict * max)
 
+def calc_mape(pred, org, size):
+    sum = 0
+    for i in range(count):
+        if price_np[i][0] <= 0.0001:
+            print('error')
+        sum += (abs(pred[i][0] - price_np[i][0])) / price_np[i][0]
+    sum /= size
+    return sum
 
-mape = np.square((predict - price_train.numpy())  / price_train.numpy()).sum() / count
-print(mape)
+print(calc_mape(predict, price_np, count))
 
-plt.plot(info_train.numpy(), price_train.numpy(), 'ro', label='Original data')
-plt.plot(info_train.numpy(), predict, label='Fitting Line')
+
+#plt.plot(info_train.numpy(), price_train.numpy(), 'ro', label='Original data')
+#plt.plot(info_train.numpy(), predict, label='Fitting Line')
+#plt.plot(dis_np, price_np, label='Fitting Line')
+#plt.plot(dis_np, abs(price_np - predict)/price_np , label='Fitting Line')
+plt.plot(index_np, abs(price_np - predict)/price_np , label='Fitting Line')
+
 plt.show()
 
 # 保存模型
