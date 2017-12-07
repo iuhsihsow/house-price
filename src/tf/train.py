@@ -9,6 +9,9 @@ x_col = []
 y_col = []
 id_col = []
 price_col = []
+x_center = 116.407718
+y_center = 38.915599
+pmax = 154953.0
 
 count = 5876
 
@@ -18,18 +21,14 @@ price_np = np.zeros((count, 1), dtype=np.float32)
 index = 0
 with open(input_file, 'rt') as ifile:
 	reader = csv.DictReader(ifile)	
-	for row in reader;
-		id_col.append(row['id'])
-		x_col.append(row['x'])
-		y_col.append(row['y'])
-		price_col.append(row['price'])
-		pos_np[index] = [row['x'], row['y']]
-		price_np[index] = row['price']
+	for row in reader:
+		pos_np[index] = [float(row['X']) - x_center, float(row['Y']) - y_center]
+		price_np[index] = float(row['price'])/pmax
 		index += 1
 print 'pos_np shape is:' , pos_np.shape
 
-xs = tf.placeholder(tf.float32, pos_np)
-ys = tf.placeholder(tf.float32, price_np)
+xs = tf.placeholder(tf.float32, [None, 2])
+ys = tf.placeholder(tf.float32, [None, 1])
 
 def add_layer(inputs, in_size, out_size, activation_function=None):
 	weights = tf.Variable(tf.random_normal([in_size, out_size]))
@@ -39,8 +38,24 @@ def add_layer(inputs, in_size, out_size, activation_function=None):
 	if activation_function is None:
 		outputs = Wx_plus_b
 	else:
-		outputs = activation_funcation(Wx_plus_b)
+		outputs = activation_function(Wx_plus_b)
 	return outputs
 
 
+cluster = 10
+l1 = add_layer(xs, 2, cluster, activation_function=tf.nn.relu)
+prediction = add_layer(l1, cluster, 1, activation_function=None)
+loss = tf.reduce_mean(tf.reduce_sum(tf.square(ys - prediction), reduction_indices=[1]))
+
+optimizer = tf.train.GradientDescentOptimizer(0.1)
+train_step = optimizer.minimize(loss)
+
+init = tf.initialize_all_variables()
+sess = tf.Session()
+sess.run(init)
+
+for i in range(1000):
+	sess.run(train_step, feed_dict={xs: pos_np, ys: price_np})
+	if i % 50 == 0:
+		print sess.run(loss, feed_dict={xs: pos_np, ys: price_np})
 
