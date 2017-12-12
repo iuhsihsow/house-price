@@ -9,7 +9,7 @@ from torchvision import datasets
 import numpy as np
 import csv
 import matplotlib.pyplot as plt
-
+import torch.nn.functional as F
 batch_size = 32
 learning_rate = 1e-2
 num_epoches = 1000
@@ -43,39 +43,43 @@ print(info_np.shape)
 print(info_np[0])
 
 dis_train = torch.from_numpy(dis_np)
+#dis_train = torch.unsqueeze(dis_train, dim=1)
+
 price_train = torch.from_numpy(price_np)
+#price_train = torch.unsqueeze(price_train, dim=1)
+
 info_train = torch.from_numpy(info_np)
 
+#x = torch.unsqueeze(torch.linspace(-1, 1, index), dim=1)  # x data (tensor), shape=(100, 1)
 
 # 定义简单的前馈神经网络
 class Neuralnetwork(nn.Module):
-    def __init__(self, in_dim, n_hidden_1, n_hidden_2, out_dim):
+    def __init__(self, in_dim, n_hidden_1, out_dim):
         super(Neuralnetwork, self).__init__()
         self.layer1 = nn.Linear(in_dim, n_hidden_1)
-        self.layer2 = nn.Linear(n_hidden_1, n_hidden_2)
-        self.layer3 = nn.Linear(n_hidden_2, out_dim)
+        self.layer3 = nn.Linear(n_hidden_1, out_dim)
 
     def forward(self, x):
-        x = self.layer1(x)
-        x = self.layer2(x)
-        x = self.layer3(x)
+        x = F.relu(self.layer1(x))      # activation function for hidden layer
+        x = self.layer3(x)             # linear output
         return x
 
 
-model = Neuralnetwork(1, 300, 100, 1)
+model = Neuralnetwork(1, 10, 1)
 
-criterion = nn.MSELoss()
+loss_func = nn.MSELoss()
 optimizer = optim.SGD(model.parameters(), lr=learning_rate)
 
 for epoch in range(num_epoches):
     running_loss = 0.0
     running_acc = 0.0
+
     inputs = Variable(dis_train)
     target = Variable(price_train)
 
     # 向前传播
     out = model(inputs)
-    loss = criterion(out, target)
+    loss = loss_func(out, target)
     # 向后传播
     optimizer.zero_grad()
     loss.backward()
@@ -89,7 +93,7 @@ model.eval()
 predict = model(Variable(dis_train))
 predict = predict.data.numpy()
 
-plt.plot(dis_train.numpy(), price_train.numpy(), 'ro', label='Original data')
+plt.plot(dis_train.numpy(), price_np, 'ro', label='Original data')
 plt.plot(dis_train.numpy(), predict, label='Fitting Line')
 plt.show()
 
